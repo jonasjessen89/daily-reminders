@@ -4,17 +4,20 @@
 // Benötigte Umgebungsvariablen (als GitHub Secrets):
 //   FIREBASE_SERVICE_ACCOUNT  – kompletter Inhalt der Service-Account-JSON-Datei
 //   OWNER_UID                 – deine Firebase-User-ID
+//
+// Probelauf gegen den lokalen Emulator (sendet nichts):
+//   FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 DRY_RUN=1 OWNER_UID=… node send.mjs
 import { initializeApp, cert } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
 import { getMessaging } from 'firebase-admin/messaging'
 
-const { FIREBASE_SERVICE_ACCOUNT, OWNER_UID } = process.env
-if (!FIREBASE_SERVICE_ACCOUNT || !OWNER_UID) {
+const { FIREBASE_SERVICE_ACCOUNT, OWNER_UID, DRY_RUN } = process.env
+if ((!FIREBASE_SERVICE_ACCOUNT && !DRY_RUN) || !OWNER_UID) {
   console.error('FIREBASE_SERVICE_ACCOUNT und OWNER_UID müssen gesetzt sein.')
   process.exit(1)
 }
 
-initializeApp({ credential: cert(JSON.parse(FIREBASE_SERVICE_ACCOUNT)) })
+initializeApp(DRY_RUN ? { projectId: 'demo-daily' } : { credential: cert(JSON.parse(FIREBASE_SERVICE_ACCOUNT)) })
 const db = getFirestore()
 const messaging = getMessaging()
 const user = db.doc(`users/${OWNER_UID}`)
@@ -35,6 +38,11 @@ if (devices.length === 0) {
   process.exit(0)
 }
 const tokens = devices.map((d) => d.data().token)
+
+if (DRY_RUN) {
+  for (const d of due) console.log(`[Probelauf] würde senden: „${d.data().title}“ an ${tokens.length} Gerät(e)`)
+  process.exit(0)
+}
 
 const fmt = new Intl.DateTimeFormat('de-DE', { timeZone: 'Europe/Berlin', hour: '2-digit', minute: '2-digit' })
 const dead = new Set()
