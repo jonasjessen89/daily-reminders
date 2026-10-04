@@ -1,0 +1,13 @@
+{
+  "name": "daily-reminders",
+  "version": "1.0.0",
+  "description": "Verschickt fällige Erinnerungen der Daily-App als Push",
+  "scripts": {
+    "send": "node send.mjs"
+  },
+  "type": "module",
+  "dependencies": {
+    "firebase-admin": "^14.5.0"
+  },
+  "private": true
+}

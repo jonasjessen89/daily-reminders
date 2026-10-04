@@ -1,0 +1,46 @@
+name: Erinnerungen senden
+
+on:
+  schedule:
+    # Alle 5 Minuten (GitHub startet geplante Jobs oft ein paar Minuten später)
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write # nur für den Keepalive-Commit
+
+concurrency:
+  group: remind
+  cancel-in-progress: false
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Fällige Erinnerungen senden
+        run: node send.mjs
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          OWNER_UID: ${{ secrets.OWNER_UID }}
+
+      # GitHub pausiert geplante Workflows nach 60 Tagen ohne Commit.
+      # Deshalb einmal im Monat ein leerer Commit.
+      - name: Keepalive
+        run: |
+          last=$(git log -1 --format=%ct)
+          if [ $(( $(date +%s) - last )) -gt $(( 30 * 86400 )) ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit --allow-empty -m "Keepalive"
+            git push
+          fi
